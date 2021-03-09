@@ -31,3 +31,8 @@ harness = false
 [[bench]]
 name = "datetime_parse"
 harness = false
+
+[profile.bench]
+opt-level = 3
+lto = true
+debug = false
