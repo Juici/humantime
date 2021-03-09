@@ -1,47 +1,38 @@
-#![feature(test)]
-extern crate test;
+use chrono::DateTime;
+use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
-use chrono::{DateTime};
-use humantime::parse_rfc3339;
+fn rfc3339_seconds(c: &mut Criterion) {
+    const STRING: &str = "2018-02-13T23:08:32Z";
 
-#[bench]
-fn rfc3339_humantime_seconds(b: &mut test::Bencher) {
-    b.iter(|| {
-        parse_rfc3339("2018-02-13T23:08:32Z").unwrap()
+    c.bench_function("parse_rfc3339_seconds_humantime", |b| {
+        b.iter(|| humantime::parse_rfc3339(black_box(STRING)).unwrap())
+    });
+    c.bench_function("parse_rfc3339_seconds_chrono", |b| {
+        b.iter(|| DateTime::parse_from_rfc3339(black_box(STRING)).unwrap())
     });
 }
 
-#[bench]
-fn datetime_utc_parse_seconds(b: &mut test::Bencher) {
-    b.iter(|| {
-        DateTime::parse_from_rfc3339("2018-02-13T23:08:32Z").unwrap()
+fn rfc3339_millis(c: &mut Criterion) {
+    const STRING: &str = "2018-02-13T23:08:32.123Z";
+
+    c.bench_function("parse_rfc3339_millis_humantime", |b| {
+        b.iter(|| humantime::parse_rfc3339(black_box(STRING)).unwrap())
+    });
+    c.bench_function("parse_rfc3339_millis_chrono", |b| {
+        b.iter(|| DateTime::parse_from_rfc3339(black_box(STRING)).unwrap())
     });
 }
 
-#[bench]
-fn rfc3339_humantime_millis(b: &mut test::Bencher) {
-    b.iter(|| {
-        parse_rfc3339("2018-02-13T23:08:32.123Z").unwrap()
+fn rfc3339_nanos(c: &mut Criterion) {
+    const STRING: &str = "2018-02-13T23:08:32.123456983Z";
+
+    c.bench_function("parse_rfc3339_nanos_humantime", |b| {
+        b.iter(|| humantime::parse_rfc3339(black_box(STRING)).unwrap())
+    });
+    c.bench_function("parse_rfc3339_nanos_chrono", |b| {
+        b.iter(|| DateTime::parse_from_rfc3339(black_box(STRING)).unwrap())
     });
 }
 
-#[bench]
-fn datetime_utc_parse_millis(b: &mut test::Bencher) {
-    b.iter(|| {
-        DateTime::parse_from_rfc3339("2018-02-13T23:08:32.123Z").unwrap()
-    });
-}
-
-#[bench]
-fn rfc3339_humantime_nanos(b: &mut test::Bencher) {
-    b.iter(|| {
-        parse_rfc3339("2018-02-13T23:08:32.123456983Z").unwrap()
-    });
-}
-
-#[bench]
-fn datetime_utc_parse_nanos(b: &mut test::Bencher) {
-    b.iter(|| {
-        DateTime::parse_from_rfc3339("2018-02-13T23:08:32.123456983Z").unwrap()
-    });
-}
+criterion_group!(benches, rfc3339_seconds, rfc3339_millis, rfc3339_nanos);
+criterion_main!(benches);
