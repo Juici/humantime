@@ -32,14 +32,14 @@ mod max {
     pub const TIMESTAMP: &str = "9999-12-31T23:59:59Z";
 }
 
-/// Error parsing datetime (timestamp)
+/// Error parsing datetime (timestamp).
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Error {
-    /// Numeric component is out of range
+    /// Numeric component is out of range.
     OutOfRange,
-    /// Bad character where digit is expected
+    /// Bad character where digit is expected.
     InvalidDigit,
-    /// Other formatting errors
+    /// Other formatting errors.
     InvalidFormat,
 }
 
@@ -55,7 +55,7 @@ impl fmt::Display for Error {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 enum Precision {
     Smart,
     Seconds,
@@ -64,8 +64,8 @@ enum Precision {
     Nanos,
 }
 
-/// A wrapper type that allows you to Display a SystemTime
-#[derive(Debug, Clone)]
+/// A wrapper type that allows you to Display a SystemTime.
+#[derive(Debug, Clone, Copy, Hash)]
 pub struct Rfc3339Timestamp(SystemTime, Precision);
 
 #[inline]
@@ -76,7 +76,7 @@ fn two_digits(b1: u8, b2: u8) -> Result<u64, Error> {
     Ok(((b1 - b'0') * 10 + (b2 - b'0')) as u64)
 }
 
-/// Parse RFC3339 timestamp `2018-02-14T00:28:07Z`
+/// Parse RFC3339 timestamp `2018-02-14T00:28:07Z`.
 ///
 /// Supported feature: any precision of fractional
 /// digits `2018-02-14T00:28:07.133Z`.
@@ -93,7 +93,7 @@ pub fn parse_rfc3339(s: &str) -> Result<SystemTime, Error> {
     parse_rfc3339_weak(s)
 }
 
-/// Parse RFC3339-like timestamp `2018-02-14 00:28:07`
+/// Parse RFC3339-like timestamp `2018-02-14 00:28:07`.
 ///
 /// Supported features:
 ///
@@ -196,7 +196,7 @@ fn is_leap_year(y: u64) -> bool {
     y % 4 == 0 && (y % 100 != 0 || y % 400 == 0)
 }
 
-/// Format an RFC3339 timestamp `2018-02-14T00:28:07Z`
+/// Format an RFC3339 timestamp `2018-02-14T00:28:07Z`.
 ///
 /// This function formats timestamp with smart precision: i.e. if it has no
 /// fractional seconds, they aren't written at all. And up to nine digits if
@@ -207,7 +207,7 @@ pub fn format_rfc3339(system_time: SystemTime) -> Rfc3339Timestamp {
     Rfc3339Timestamp(system_time, Precision::Smart)
 }
 
-/// Format an RFC3339 timestamp `2018-02-14T00:28:07Z`
+/// Format an RFC3339 timestamp `2018-02-14T00:28:07Z`.
 ///
 /// This format always shows timestamp without fractional seconds.
 ///
@@ -216,7 +216,7 @@ pub fn format_rfc3339_seconds(system_time: SystemTime) -> Rfc3339Timestamp {
     Rfc3339Timestamp(system_time, Precision::Seconds)
 }
 
-/// Format an RFC3339 timestamp `2018-02-14T00:28:07.000Z`
+/// Format an RFC3339 timestamp `2018-02-14T00:28:07.000Z`.
 ///
 /// This format always shows milliseconds even if millisecond value is zero.
 ///
@@ -225,7 +225,7 @@ pub fn format_rfc3339_millis(system_time: SystemTime) -> Rfc3339Timestamp {
     Rfc3339Timestamp(system_time, Precision::Millis)
 }
 
-/// Format an RFC3339 timestamp `2018-02-14T00:28:07.000000Z`
+/// Format an RFC3339 timestamp `2018-02-14T00:28:07.000000Z`.
 ///
 /// This format always shows microseconds even if microsecond value is zero.
 ///
@@ -234,7 +234,7 @@ pub fn format_rfc3339_micros(system_time: SystemTime) -> Rfc3339Timestamp {
     Rfc3339Timestamp(system_time, Precision::Micros)
 }
 
-/// Format an RFC3339 timestamp `2018-02-14T00:28:07.000000000Z`
+/// Format an RFC3339 timestamp `2018-02-14T00:28:07.000000000Z`.
 ///
 /// This format always shows nanoseconds even if nanosecond value is zero.
 ///
@@ -244,7 +244,7 @@ pub fn format_rfc3339_nanos(system_time: SystemTime) -> Rfc3339Timestamp {
 }
 
 impl Rfc3339Timestamp {
-    /// Returns a reference to the [`SystemTime`][] that is being formatted.
+    /// Returns a reference to the [`SystemTime`] that is being formatted.
     pub fn get_ref(&self) -> &SystemTime {
         &self.0
     }
@@ -323,14 +323,18 @@ impl fmt::Display for Rfc3339Timestamp {
         const BUF_INIT: [u8; 30] = *b"0000-00-00T00:00:00.000000000Z";
 
         let mut buf: [u8; 30] = BUF_INIT;
+
         buf[0] = b'0' + (year / 1000) as u8;
         buf[1] = b'0' + (year / 100 % 10) as u8;
         buf[2] = b'0' + (year / 10 % 10) as u8;
         buf[3] = b'0' + (year % 10) as u8;
+
         buf[5] = b'0' + (mon / 10) as u8;
         buf[6] = b'0' + (mon % 10) as u8;
+
         buf[8] = b'0' + (mday / 10) as u8;
         buf[9] = b'0' + (mday % 10) as u8;
+
         buf[11] = b'0' + (secs_of_day / 3600 / 10) as u8;
         buf[12] = b'0' + (secs_of_day / 3600 % 10) as u8;
         buf[14] = b'0' + (secs_of_day / 60 / 10 % 6) as u8;
@@ -338,7 +342,8 @@ impl fmt::Display for Rfc3339Timestamp {
         buf[17] = b'0' + (secs_of_day / 10 % 6) as u8;
         buf[18] = b'0' + (secs_of_day % 10) as u8;
 
-        let offset = if self.1 == Seconds || nanos == 0 && self.1 == Smart {
+        // Repeated code here allows the compiler to perform better optimisations.
+        let offset = if self.1 == Seconds || (self.1 == Smart && nanos == 0) {
             buf[19] = b'Z';
             19
         } else if self.1 == Millis {
@@ -366,11 +371,11 @@ impl fmt::Display for Rfc3339Timestamp {
             buf[26] = b'0' + (nanos / 100 % 10) as u8;
             buf[27] = b'0' + (nanos / 10 % 10) as u8;
             buf[28] = b'0' + (nanos / 1 % 10) as u8;
-            // 29th is 'Z'
+            // Index 29 is already 'Z'.
             29
         };
 
-        // we know our chars are all ascii
+        // We know our buffer is all ASCII characters.
         f.write_str(str::from_utf8(&buf[..=offset]).expect("Conversion to utf8 failed"))
     }
 }
